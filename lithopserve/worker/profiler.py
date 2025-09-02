@@ -130,6 +130,7 @@ class Profiler:
                 if metric_type != 'network_metrics':
                     labels_dict.update({'pid': str(metric.pid), 'parent_pid': str(metric.parent_pid)})
 
+                print(f"[DEBUG] Sending to Prometheus: metric={key} value={metric_value} labels={labels_dict}")
                 self.send_metric_to_prometheus(prometheus, key, metric_value, 'gauge', labels_dict)
 
     def _check_stop_signal(self, conn):

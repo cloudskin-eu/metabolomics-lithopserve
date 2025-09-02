@@ -11,7 +11,7 @@ def handle_psutil_error(func):
     def wrapper(*args, **kwargs):
         try:
             return func(*args, **kwargs)
-        except psutil.NoSuchProcess:
+        except (psutil.NoSuchProcess, psutil.AccessDenied, PermissionError) as e:
             logger.warning("Process no longer exists.")
             return None
     return wrapper

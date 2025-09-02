@@ -12,7 +12,7 @@ class PrometheusExporter():
         self.enabled = enabled
         self.apigateway = config.get('apigateway') if config else None
 
-        self.job = 'lithops'
+        self.job = 'lithopserve'
         self.instance = os.environ['__LITHOPS_SESSION_ID'].split('-')[0]
 
     def send_metric(self, name, value, type, labels, timestamp=None):
@@ -45,5 +45,27 @@ class PrometheusExporter():
                 response = requests.post(url, data=payload, headers={"Content-Type": "text/plain"})
                 if response.status_code != 200:
                     logger.error(f'Failed to send metric: {response.text}')
+            except Exception as e:
+                logger.error(e)
+
+    def delete_metric(self, name, labels):
+        """Delete a metric from the API Gateway/Pushgateway for the given label set"""
+        if self.enabled and self.apigateway:
+            dim = 'job/{}/instance/{}'.format(self.job, self.instance)
+            if isinstance(labels, dict):
+                items = labels.items()
+            elif isinstance(labels, (tuple, list)):
+                items = labels
+            else:
+                raise TypeError("Labels should be a dict or a list/tuple of tuples")
+
+            for key, val in items:
+                dim += '/%s/%s' % (key, val)
+            # URL is the same structure as send_metric
+            url = '/'.join([self.apigateway, 'metrics', dim])
+            try:
+                response = requests.delete(url)
+                if response.status_code != 202 and response.status_code != 200:
+                    logger.error(f'Failed to delete metric: {response.text}')
             except Exception as e:
                 logger.error(e)

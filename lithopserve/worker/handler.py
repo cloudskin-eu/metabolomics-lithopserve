@@ -247,20 +247,31 @@ def run_task(task):
         profiler_timeout = jobrunner.lithops_config['lithopserve'].get('profiler_timeout')
 
         logger.debug('Starting JobRunner process')
+        # if task.pid != 0:
+        logger.debug(f'JobRunner will run in a separate process with PID {task.pid}')
         jrp = Process(target=jobrunner.run) if is_unix_system() else Thread(target=jobrunner.run)
 
         process_id = os.getpid() if is_unix_system() else mp.current_process().pid
-        jrp.start()
+        # jrp.start()
 
         sys_monitor = SystemMonitor(process_id)
         sys_monitor.start()
 
+        # if task.pid != 0:
+        logger.debug('JobRunner is running in a separate process')
+        jrp.start()
         if task.log_level == logging.DEBUG:
             with profiling_context(jobrunner_conn, process_id, prometheus, jobrunner.job, profiler_timeout):
                 jrp.join(task.execution_timeout)
             logger.debug('Profiling completed')
         else:
             jrp.join(task.execution_timeout)
+        # else:
+        #     logger.debug('JobRunner is running in the main thread')
+        #     jobrunner.run()
+        #     jrp = jobrunner
+
+
 
         sys_monitor.stop()
 
