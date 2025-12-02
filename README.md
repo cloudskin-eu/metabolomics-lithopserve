@@ -16,18 +16,14 @@
   </a>
 </p>
 
-Lithops is a Python multi-cloud distributed computing framework. It allows you to run unmodified local python code at massive scale in the main
-serverless computing platforms. Lithops delivers the user’s code into the cloud without requiring knowledge of how it is deployed and run. Moreover, its multicloud-agnostic architecture ensures portability across cloud providers.
-
-Lithops is specially suited for highly-parallel programs with little or no need for communication between processes, but it also supports parallel applications that need to share state among processes. Examples of applications that run with Lithops include Monte Carlo simulations, deep learning and machine learning processes, metabolomics computations, and geospatial analytics, to name a few.
-
+Lithopserve is a modified version of Lithops that facilitates inference model serving in serverless environments. It is designed to deploy machine learning models as serverless functions, enabling scalable and efficient model inference without the need for dedicated servers.
 
 ## Installation
 
 1. Install Lithops from the PyPi repository:
 
     ```bash
-    pip install lithops
+    pip install git+https://github.com/cloudskin-eu/metabolomics-lithopserve
     ```
 
 2. Execute a *Hello World* function:
@@ -112,7 +108,7 @@ with Pool() as pool:
 <td>
 
 ```python
-from lithops import Storage
+from lithopserve import Storage
 
 if __name__ == "__main__":
     st = Storage()
@@ -127,7 +123,7 @@ if __name__ == "__main__":
 <td>
 
 ```python
-from lithops.storage.cloud_proxy import os 
+from lithopserve.storage.cloud_proxy import os 
 
 if __name__ == "__main__":
     filepath = 'bar/foo.txt'
@@ -195,4 +191,7 @@ If you are interested in contributing, see [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 
 # Acknowledgements
-This project has received funding from the European Union's Horizon 2020 research and innovation programme under grant agreement No 825184.
+<img width="80px" src="https://cloudskin.eu/assets/img/europe.jpg" alt="European flag" />
+
+CLOUDSKIN has received funding from the European Union’s Horizon research and innovation programme under grant agreement No 101092646.
+https://cloudskin.eu
