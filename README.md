@@ -1,193 +1,223 @@
-<p align="center">
-  <a href="http://lithops.cloud">
-    <h1 id='lithops' align="center"><img src="docs/_static/lithops_logo_readme.png" alt="Lithops" title="Lightweight Optimized Processing"/></h1>
-  </a>
-</p>
+# # Lithops Serve
 
-<p align="center">
-  <a aria-label="License" href="https://github.com/lithops-cloud/lithops/blob/master/LICENSE">
-    <img alt="" src="https://img.shields.io/github/license/lithops-cloud/lithops?style=for-the-badge&labelColor=000000">
-  </a>
-  <a aria-label="PyPi" href="https://pypi.org/project/lithops/">
-    <img alt="" src="https://img.shields.io/pypi/v/lithops?style=for-the-badge&labelColor=000000">
-  </a>
-  <a aria-label="Python" href="#lithops">
-    <img alt="" src="https://img.shields.io/pypi/pyversions/lithops?style=for-the-badge&labelColor=000000">
-  </a>
-</p>
+Lithops Serve expands Lithops capabilities to serving of AI models. It manages model deployment to serverless backends and orchestrates batched inference workloads across distributed workers.  
 
-Lithopserve is a modified version of Lithops that facilitates inference model serving in serverless environments. It is designed to deploy machine learning models as serverless functions, enabling scalable and efficient model inference without the need for dedicated servers.
+
+---
+## Overview
+
+Lithops Serve introduces:
+- A central orchestrator for managing inference jobs
+- Task Managers that execute preprocessing and inference
+- Support for local, AWS Lambda, and Kubernetes backends
+- Configurable batching, parallelism, and execution policies
+
+---
+
+## Requirements and Environment Setup
+
+- Python **>3.8**
+- Conda is recommended
+
+### Conda setup (recommended)
+
+    mkdir -p ~/miniconda3
+    wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda3/miniconda.sh
+    bash ~/miniconda3/miniconda.sh -b -u -p ~/miniconda3
+    rm -rf ~/miniconda3/miniconda.sh
+
+    ~/miniconda3/bin/conda init bash
+    conda create -n python311 python=3.11
+
+---
 
 ## Installation
 
-1. Install Lithops from the PyPi repository:
+### Build and install locally
 
-    ```bash
+    python -m pip install --upgrade build
+    python -m build
+    pip install dist/lithopserve-*.whl
+
+### Install from GitHub
+
     pip install git+https://github.com/cloudskin-eu/metabolomics-lithopserve
-    ```
 
-2. Execute a *Hello World* function:
-  
-   ```bash
-   lithops hello
-   ```
+---
 
-## Configuration
-Lithops provides an extensible backend architecture (compute, storage) that is designed to work with different Cloud providers and on-premise backends. In this sense, you can code in python and run it unmodified in IBM Cloud, AWS, Azure, Google Cloud, Aliyun and Kubernetes or OpenShift.
+## PyTorch (CPU-only)
 
-[Follow these instructions to configure your compute and storage backends](config/)
+    pip install torch==2.1.0 torchvision==0.16.0 --index-url https://download.pytorch.org/whl/cpu
 
-<p align="center">
-<a href="config/README.md#compute-and-storage-backends">
-<img src="docs/source/images/multicloud.jpg" alt="Multicloud Lithops" title="Multicloud Lithops"/>
-</a>
-</p>
+---
+
+## Examples
+
+Examples are available in the `examples/` directory and cover:
+- Local execution
+- AWS Lambda backend
+- Kubernetes backend
+
+---
+## Architecture
+
+Lithops Serve follows a master–worker architecture composed of an **orchestrator** and multiple **task managers**. The orchestrator is responsible for job-level coordination, while task managers execute the actual data processing and inference.
+
+---
+
+### High-level Execution Flow
+
+1. A user defines a **job** over a dataset.
+2. The job is submitted to the **orchestrator**.
+3. The orchestrator splits the dataset into smaller **splits**.
+4. Each split is assigned to a **task manager**.
+5. Task managers execute the task pipeline and return or store results.
+
+Both the split size and the level of parallelism are configurable.
+
+---
+
+### Task Manager
+
+A **Task Manager** is the code executed inside each function invocation (e.g. local process, AWS Lambda, Kubernetes pod).
+
+It defines a fixed pipeline of tasks, typically:
+- Download
+- Preprocess
+- Inference
+
+Key characteristics:
+- Inputs flow **sequentially** through the task pipeline
+- Each task can use **threading or multiprocessing**
+- The user controls the **parallelism level per task**
+- A task manager processes one split at a time
+
+---
+
+### Orchestrator
+
+The **orchestrator** is responsible for:
+- Splitting datasets into jobs and splits
+- Scheduling and invoking task managers
+- Tracking job and split status
+- Enforcing resource limits and execution policies
+
+The orchestrator can manage multiple jobs concurrently and ensures that system-wide limits are respected.
+
+---
+
+## Orchestrator Initialization
+
+The orchestrator currently supports the following execution backends:
+- Local
+- AWS Lambda
+
+### Example
+
+    from lithopserve import Orchestrator
+
+    orchestrator = Orchestrator(
+        fexec_args={'runtime': 'off_sample_311', 'runtime_memory': 3008},
+        initialize=False
+    )
+
+### Key parameters
+
+- **fexec_args**: Dictionary of Lithops `FunctionExecutor` arguments
+- **orchestrator_backend**: Backends to be used (default: ['aws_lambda', 'local'])
+- **initialize**: If True, backend resources are deployed if needed
+- **job_policy**: Policy that defines how splits are scheduled (default: default)
+- **ec2_host_machine**: Deploy Lambda in the same VPC, subnet, and security group
+- **max_job_managers**: Maximum number of simultaneous jobs
+- **max_task_managers**: Maximum number of simultaneous task managers
+
+---
+
+## Task Manager Deployment
+
+- **Local backend**: No deployment required
+- **AWS Lambda backend**: Task managers must be deployed
+
+Deployment can be done automatically by setting `initialize=True` or manually.
+
+### Manual deployment example
+
+    from lithopserve import Orchestrator
+
+    orchestrator = Orchestrator(
+        fexec_args={'runtime': 'off_sample_311', 'runtime_memory': 3008},
+        initialize=False
+    )
+    orchestrator.redeploy_runtime()
+
+---
+
+## Job Definition
+
+A **job** represents an inference request over a dataset.
+
+### Creating a job
+
+    job = Job(
+        urls,
+        job_name,
+        orchestrator_backend="aws_lambda",
+        split_size=split_size,
+        num_task_managers=num_task_managers
+    )
+
+### Key job parameters
+
+- **input**: List of URLs to process
+- **job_name**: Name of the job
+- **bucket**: Source bucket (if omitted, files are downloaded from the internet)
+- **split_size**: Number of inputs per split
+- **num_task_managers**: Number of task managers to use
+- **orchestrator_backend**: Backend used for execution (default: aws_lambda)
+- **speculation_enabled**: Reassign stuck splits to other task managers
+- **keep_alive**: Task managers periodically ping the orchestrator
+- **output_storage**: Storage backend for results (local or s3)
+- **output_location**: Local path or object storage path
+- **output_bucket**: Destination bucket for results
+
+---
+
+### Split and Resource Resolution Rules
+
+Even if `split_size` and `num_task_managers` are explicitly set, the orchestrator applies the following rules in order:
+
+1. **Default values**  
+   Used when parameters are not specified  
+   See `constants_lithopserve.py`
+
+2. **Job policy**  
+   Defines how many splits are created and how they are scheduled  
+   - Default policy: one split per task manager  
+   - Other policies may create more splits than task managers  
+   - Task managers can request additional splits dynamically  
+   See `job_policies.py`
+
+3. **Maximum limits**  
+   The final number of task managers is capped by system-wide limits
 
 
-## High-level API
+### Job Submission
 
-Lithops is shipped with 2 different high-level Compute APIs, and 2 high-level Storage APIs
+Jobs must be submitted to the orchestrator to start execution.
 
-<div align="center">
-<table>
-<tr>
-  <th>
-    <img width="50%" height="1px">
-    <p><small><a href="docs/api_futures.md">Futures API</a></small></p>
-  </th>
-  <th>
-    <img width="50%" height="1px">
-    <p><small><a href="docs/source/api_multiprocessing.rst">Multiprocessing API</a></small></p>
-  </th>
-</tr>
+#### Run synchronously
 
-<tr>
-<td>
+    result = orchestrator.run_job(job)
 
-```python
-from lithops import FunctionExecutor
+Blocks until the job finishes and returns results.
 
-def hello(name):
-    return f'Hello {name}!'
+#### Enqueue asynchronously
 
-with FunctionExecutor() as fexec:
-    fut = fexec.call_async(hello, 'World')
-    print(fut.result())
-```
-</td>
-<td>
+    orchestrator.enqueue_job(job)
 
-```python
-from lithops.multiprocessing import Pool
-
-def double(i):
-    return i * 2
-
-with Pool() as pool:
-    result = pool.map(double, [1, 2, 3, 4])
-    print(result)
-```
-</td>
-</tr>
-
-</table>
-
-<table>
-<tr>
-  <th>
-    <img width="50%" height="1px">
-    <p><small><a href="docs/api_storage.md">Storage API</a></small></p>
-  </th>
-  <th>
-    <img width="50%" height="1px">
-    <p><small><a href="docs/source/api_storage_os.rst">Storage OS API</a></small></p>
-  </th>
-</tr>
-
-<tr>
-<td>
-
-```python
-from lithopserve import Storage
-
-if __name__ == "__main__":
-    st = Storage()
-    st.put_object(bucket='mybucket',
-                  key='test.txt',
-                  body='Hello World')
-
-    print(st.get_object(bucket='mybucket',
-                        key='test.txt'))
-```
-</td>
-<td>
-
-```python
-from lithopserve.storage.cloud_proxy import os 
-
-if __name__ == "__main__":
-    filepath = 'bar/foo.txt'
-    with os.open(filepath, 'w') as f:
-        f.write('Hello world!')
-
-    dirname = os.path.dirname(filepath)
-    print(os.listdir(dirname))
-    os.remove(filepath)
-```
-</td>
-</tr>
-
-</table>
-</div>
-
-You can find more usage examples in the [examples](/examples) folder.
-
-## Execution Modes
-
-Lithops is shipped with 3 different modes of execution. The execution mode allows you to decide where and how the functions are executed.
-
-* [Localhost Mode](docs/source/execution_modes.rst#localhost-mode)
-
-  This mode allows you to execute functions on the local machine using processes, providing a convenient way to leverage Lithops' distributed computing capabilities without relying on cloud resources. This mode is particularly useful for development, testing, and debugging purposes. This is the default mode of execution if no configuration is provided.
-
-* [Serverless Mode](docs/source/execution_modes.rst#serverless-mode)
-
-  This mode allows you to execute functions on popular serverless compute services, leveraging the scalability, isolation, and automatic resource provisioning provided by these platforms. With serverless mode, you can easily parallelize task execution, harness the elastic nature of serverless environments, and simplify the development and deployment of scalable data processing workloads and parallel applications.
-
-* [Standalone Mode](docs/source/execution_modes.rst#standalone-mode)
-
-  This mode provides the capability to execute functions on one or multiple virtual machines (VMs) simultaneously, in a serverless-like fashion, without requiring manual provisioning as everything is automatically created. This mode can be used in a private cluster or in the cloud, where functions within each VM are executed using parallel processes.
-
-
-## Documentation
-
-For documentation on using Lithops, see [latest release documentation](https://lithops-cloud.github.io/docs/) or [current github docs](docs/user_guide.md).
-
-If you are interested in contributing, see [CONTRIBUTING.md](./CONTRIBUTING.md).
-
-## Additional resources
-
-### Blogs and Talks
-* [Simplify the developer experience with OpenShift for Big Data processing by using Lithops framework](https://medium.com/@gvernik/simplify-the-developer-experience-with-openshift-for-big-data-processing-by-using-lithops-framework-d62a795b5e1c)
-* [Speed-up your Python applications using Lithops and Serverless Cloud resources](https://itnext.io/speed-up-your-python-applications-using-lithops-and-serverless-cloud-resources-a64beb008bb5)
-* [Serverless Without Constraints](https://www.ibm.com/cloud/blog/serverless-without-constraints)
-* [Lithops, a Multi-cloud Serverless Programming Framework](https://itnext.io/lithops-a-multi-cloud-serverless-programming-framework-fd97f0d5e9e4)
-* [CNCF Webinar - Toward Hybrid Cloud Serverless Transparency with Lithops Framework](https://www.youtube.com/watch?v=-uS-wi8CxBo)
-* [Using Serverless to Run Your Python Code on 1000 Cores by Changing Two Lines of Code](https://www.ibm.com/cloud/blog/using-serverless-to-run-your-python-code-on-1000-cores-by-changing-two-lines-of-code)
-* [Decoding dark molecular matter in spatial metabolomics with IBM Cloud Functions](https://www.ibm.com/cloud/blog/decoding-dark-molecular-matter-in-spatial-metabolomics-with-ibm-cloud-functions)
-* [Your easy move to serverless computing and radically simplified data processing](https://www.slideshare.net/gvernik/your-easy-move-to-serverless-computing-and-radically-simplified-data-processing-238929020) Strata Data Conference, NY 2019. See video of Lithops usage [here](https://www.youtube.com/watch?v=EYa95KyYEtg&list=PLpR7f3Www9KCjYisaG7AMaR0C2GqLUh2G&index=3&t=0s) and the example of Monte Carlo [here](https://www.youtube.com/watch?v=vF5HI2q5VKw&list=PLpR7f3Www9KCjYisaG7AMaR0C2GqLUh2G&index=2&t=0s)
-* [Speed up data pre-processing with Lithops in deep learning](https://developer.ibm.com/patterns/speed-up-data-pre-processing-with-pywren-in-deep-learning/)
-* [Predicting the future with Monte Carlo simulations over IBM Cloud Functions](https://www.ibm.com/cloud/blog/monte-carlo-simulations-with-ibm-cloud-functions)
-* [Process large data sets at massive scale with Lithops over IBM Cloud Functions](https://www.ibm.com/cloud/blog/process-large-data-sets-massive-scale-pywren-ibm-cloud-functions)
-* [Industrial project in Technion on Lithops](http://www.cs.technion.ac.il/~cs234313/projects_sites/W19/04/site/)
-
-### Papers
-
-* [Outsourcing Data Processing Jobs with Lithops](https://ieeexplore.ieee.org/document/9619947) - IEEE Transactions on Cloud Computing 2022
-* [Towards Multicloud Access Transparency in Serverless Computing](https://www.computer.org/csdl/magazine/so/5555/01/09218932/1nMMkpZ8Ko8) - IEEE Software 2021
-* [Primula: a Practical Shuffle/Sort Operator for Serverless Computing](https://dl.acm.org/doi/10.1145/3429357.3430522) - ACM/IFIP International Middleware Conference 2020. [See presentation here](https://www.youtube.com/watch?v=v698iu5YfWM)
-* [Bringing scaling transparency to Proteomics applications with serverless computing](https://dl.acm.org/doi/abs/10.1145/3429880.3430101) - 6th International Workshop on Serverless Computing (WoSC6) 2020. [See presentation here](https://www.serverlesscomputing.org/wosc6/#p10)
-* [Serverless data analytics in the IBM Cloud](https://dl.acm.org/citation.cfm?id=3284029) - ACM/IFIP International Middleware Conference 2018
+- Supports multiple jobs executing concurrently
+- Results must be stored to disk or cloud storage
+- Output configuration is defined in the job
 
 
 # Acknowledgements

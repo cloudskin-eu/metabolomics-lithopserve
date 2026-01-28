@@ -1,0 +1,27 @@
+syntax = "proto3";
+package split_grpc;
+
+// to compile
+// python3 -m grpc_tools.protoc -I./ --python_out=. --grpc_python_out=. --pyi_out=. ./split_grpc.proto
+
+
+service SPLITRPC {
+  rpc Assign (splitRequest) returns (splitResponse);
+}
+
+message splitRequest {
+  repeated Dict outputs = 1;
+  string tid = 2;
+  string sid = 3;
+  bool keep_alive = 4;
+}
+
+message splitResponse {
+  repeated string inputs = 1;
+  string sid = 2;
+}
+
+message Dict {
+  string key = 1;
+  string value = 2;
+}

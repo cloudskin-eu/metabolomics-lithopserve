@@ -1,0 +1,23 @@
+lithopserve:
+    backend: aws_lambda
+    storage: aws_s3
+    log_level: DEBUG
+
+aws:
+    access_key_id:
+    secret_access_key:
+    session_token:
+
+aws_lambda:
+    execution_role: arn:aws:iam::879646340568:role/LithopsRole
+    region_name: eu-west-1
+    invoke_pool_threads: 64
+    runtime_include_function: True
+    runtime_timeout: 900
+
+aws_s3:
+    storage_bucket: off-sample-eu
+    region_name : eu-west-1
+
+
+

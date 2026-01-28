@@ -4,8 +4,11 @@ from itertools import chain
 
 
 install_requires = [
+    'flask',
     'Click',
     'tabulate',
+    'pillow',
+    'numpy',
     'pandas',
     'PyYAML',
     'python-dateutil',
@@ -27,7 +30,9 @@ install_requires = [
     'cloudpickle',
     'tblib',
     'ps-mem',
-    'psutil'
+    'psutil',
+    'grpcio==1.51.1',
+    'protobuf==4.21.12',
 ]
 
 
@@ -72,12 +77,16 @@ exec(open('lithopserve/version.py').read())
 setup(
     name='lithopserve',
     version=__version__,
-    url='https://github.com/ZikBurns/lithopserve',
-    author='Gil Vernik, Josep Sampe',
-    description='Lithops lets you transparently run your Python applications in the Cloud',
-    author_email='gilv@ibm.com, josep.sampe@gmail.com',
+    url='https://github.com/cloudskin-eu/metabolomics-lithopserve',
+    author='Josep Calero',
+    description='An orchestrator of serverless functions for image classification integrated into Lithops',
+    author_email='josep.calero@urv.cat',
     packages=find_packages(),
     install_requires=install_requires,
+    dependency_links=[
+        'https://download.pytorch.org/whl/cpu/torch-2.0.1%2Bcpu-cp311-cp311-linux_x86_64.whl',
+        'https://download.pytorch.org/whl/cpu/torchvision-0.15.2%2Bcpu-cp311-cp311-linux_x86_64.whl'
+    ],
     extras_require=extras_require,
     include_package_data=True,
     entry_points='''

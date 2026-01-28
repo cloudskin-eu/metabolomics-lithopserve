@@ -1,0 +1,46 @@
+FROM python:3.11-slim-bullseye
+
+RUN apt-get update && apt-get install -y \
+        zip redis-server curl \
+        && apt-get clean \
+        && rm -rf /var/lib/apt/lists/*
+
+RUN pip install --upgrade pip six
+RUN pip install numpy==1.24.3 \
+        urllib3==1.26.20 \
+        flask \
+        pika \
+        boto3 \
+        ibm-cloud-sdk-core \
+        ibm-cos-sdk \
+        redis \
+        gevent \
+        requests \
+        PyYAML \
+        kubernetes \
+        numpy \
+        cloudpickle \
+        ps-mem \
+        tblib \
+        psutil \
+        pandas \
+        Pillow \
+        matplotlib \
+        grpcio \
+        protobuf
+
+RUN pip install torch==2.0.1 torchvision==0.15.2 --index-url https://download.pytorch.org/whl/cpu
+
+ENV PYTHONUNBUFFERED TRUE
+
+# Copy Lithops proxy and lib to the container image.
+ENV APP_HOME /lithops
+WORKDIR $APP_HOME
+
+ARG BINS_DIR="/lithops/bin"
+RUN mkdir -p ${BINS_DIR}
+COPY model.pt ${BINS_DIR}/model.pt
+
+COPY lithops_k8s.zip .
+RUN unzip lithops_k8s.zip && rm lithops_k8s.zip
+

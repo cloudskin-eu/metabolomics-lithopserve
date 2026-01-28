@@ -1,0 +1,13 @@
+
+load:
+  max_concurrency: 32
+  batch_size: 1
+
+preprocess:
+  num_cpus: 2
+  batch_size: 8
+
+predict:
+  interop: 4
+  intraop: 2
+  n_models: 4

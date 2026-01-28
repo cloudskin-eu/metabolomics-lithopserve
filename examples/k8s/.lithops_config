@@ -1,0 +1,19 @@
+lithops:
+    backend : k8s
+    log_level: DEBUG
+    storage: minio
+
+minio:
+    storage_bucket:
+    endpoint:
+    access_key_id:
+    secret_access_key:
+
+k8s:
+    docker_server    :
+    docker_user      :
+    docker_password  :
+    runtime_memory: 1024
+    runtime_cpu: 1
+    runtime_include_function: False
+
