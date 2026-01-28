@@ -1,4 +1,4 @@
-# # Lithops Serve
+# Lithops Serve
 
 Lithops Serve expands Lithops capabilities to serving of AI models. It manages model deployment to serverless backends and orchestrates batched inference workloads across distributed workers.  
 
